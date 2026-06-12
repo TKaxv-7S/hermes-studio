@@ -241,6 +241,10 @@ const activeSessionModelLabel = computed(() => {
   return appStore.displayModelName(session.model, session.provider);
 });
 
+const isActiveSessionCodingAgent = computed(() =>
+  chatStore.activeSession?.source === "coding_agent",
+);
+
 const headerTitle = computed(() =>
   currentMode.value === "live"
     ? t("chat.liveSessions")
@@ -913,6 +917,7 @@ function handleHeaderModelClick() {
     openNewChatModal();
     return;
   }
+  if (isActiveSessionCodingAgent.value) return;
   openSessionModelModal(sessionId);
 }
 
@@ -1721,6 +1726,7 @@ async function handleSessionModelCustomSubmit() {
             </NTooltip>
             <NButton
               class="header-model-button"
+              :class="{ 'header-model-button--readonly': isActiveSessionCodingAgent }"
               size="small"
               :circle="isMobile"
               :title="activeSessionModelLabel"
@@ -2672,6 +2678,15 @@ async function handleSessionModelCustomSubmit() {
 
 .header-model-button {
   max-width: 220px;
+}
+
+.header-model-button--readonly {
+  cursor: default;
+}
+
+.header-model-button--readonly :deep(.n-button__content),
+.header-model-button--readonly :deep(.n-button__icon) {
+  cursor: default;
 }
 
 .header-model-button :deep(.n-button__content) {
