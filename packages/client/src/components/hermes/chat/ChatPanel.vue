@@ -2772,7 +2772,7 @@ async function handleSessionModelCustomSubmit() {
       linear-gradient($text-muted, $text-muted) center 9px / 2px 2px no-repeat,
       linear-gradient($text-muted, $text-muted) center 17px / 2px 2px no-repeat,
       linear-gradient($text-muted, $text-muted) center 25px / 2px 2px no-repeat,
-      rgba($bg-card, 0.92);
+      $bg-card;
     border: 1px solid $border-color;
     opacity: 0.78;
     transition: all $transition-fast;
@@ -2789,7 +2789,7 @@ async function handleSessionModelCustomSubmit() {
       linear-gradient($text-muted, $text-muted) center 9px / 2px 2px no-repeat,
       linear-gradient($text-muted, $text-muted) center 17px / 2px 2px no-repeat,
       linear-gradient($text-muted, $text-muted) center 25px / 2px 2px no-repeat,
-      rgba($bg-card, 0.96);
+      $bg-card;
     border-color: var(--accent-primary);
     opacity: 1;
   }
