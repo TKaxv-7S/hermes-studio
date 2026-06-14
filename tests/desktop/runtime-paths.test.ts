@@ -187,6 +187,33 @@ describe('desktop runtime paths', () => {
     expect(desktopRuntimeDir()).toBe(runtime016)
   })
 
+  it('keeps using the active local runtime even when the packaged runtime version is newer', async () => {
+    const homeDir = tempDir()
+    process.env.HERMES_WEB_UI_HOME = homeDir
+    process.env.HERMES_DESKTOP_RUNTIME_RELEASE_TAG = 'hermes-0.16.0-runtime'
+    mockElectronApp.isPackaged = true
+
+    const { runtimePlatformKey } = await import('../../packages/desktop/src/main/runtime-paths')
+    const platformKey = runtimePlatformKey()
+    const runtime015 = join(homeDir, 'desktop-runtime', 'hermes', '0.15.2', platformKey)
+    const runtime016 = join(homeDir, 'desktop-runtime', 'hermes', '0.16.0', platformKey)
+    createRuntime(runtime015, '0.15.2')
+    createRuntime(runtime016, '0.16.0')
+
+    mkdirSync(join(homeDir, 'desktop-runtime'), { recursive: true })
+    writeFileSync(join(homeDir, 'desktop-runtime', 'active-version.json'), JSON.stringify({
+      schema: 1,
+      hermesRuntimeVersion: '0.15.2',
+      runtimeDirectory: runtime015,
+      platform: platformKey,
+    }))
+
+    const { desktopRuntimeDir, targetDesktopRuntimeDir } = await import('../../packages/desktop/src/main/paths')
+
+    expect(desktopRuntimeDir()).toBe(runtime015)
+    expect(targetDesktopRuntimeDir()).toBe(runtime016)
+  })
+
   it('uses installed runtime directories under desktop-runtime/hermes when executable files are present', async () => {
     const homeDir = tempDir()
     process.env.HERMES_WEB_UI_HOME = homeDir

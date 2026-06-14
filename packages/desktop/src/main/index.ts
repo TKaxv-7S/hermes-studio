@@ -8,7 +8,6 @@ import { t } from './desktop-i18n'
 import { installHermesStudioCliShim, installHermesStudioMcpShim } from './cli-shim'
 import { parseHermesCliArgs, runBundledHermesCli } from './hermes-cli'
 import {
-  cachedRuntimeNeedsPackagedReleaseUpdate,
   ensureDesktopRuntime,
   isDesktopRuntimeReady,
   writeActiveRuntimeVersion,
@@ -426,8 +425,7 @@ async function bootstrap(source?: RuntimeDownloadSource) {
     const manifestOverride = !!process.env.HERMES_DESKTOP_RUNTIME_MANIFEST_URL?.trim()
     const forceUpdate = !!process.env.HERMES_DESKTOP_RUNTIME_FORCE_UPDATE
     const runtimeReady = isDesktopRuntimeReady()
-    const packagedRuntimeUpdate = app.isPackaged && runtimeReady && cachedRuntimeNeedsPackagedReleaseUpdate()
-    const needsRuntimeWork = !runtimeReady || forceUpdate || runtimeUrlOverride || manifestOverride || packagedRuntimeUpdate
+    const needsRuntimeWork = !runtimeReady || forceUpdate || runtimeUrlOverride || manifestOverride
 
     if (needsRuntimeWork) {
       if (!selectedSource && !runtimeUrlOverride && !manifestOverride) {
