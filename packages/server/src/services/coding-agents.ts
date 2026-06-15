@@ -733,6 +733,10 @@ function tomlStringArray(values: string[]): string {
   return `[${values.map(tomlString).join(', ')}]`
 }
 
+function tomlInlineStringTable(values: Record<string, string>): string {
+  return `{ ${Object.entries(values).map(([key, value]) => `${key} = ${tomlString(value)}`).join(', ')} }`
+}
+
 function isDesktopRuntime(): boolean {
   return String(process.env.HERMES_DESKTOP || '').trim().toLowerCase() === 'true'
 }
@@ -783,11 +787,7 @@ function codexMcpConfigToml(): string {
   ]
   if (server.args?.length) lines.push(`args = ${tomlStringArray(server.args)}`)
   lines.push('startup_timeout_sec = 120')
-  lines.push('')
-  lines.push(`[mcp_servers.${HERMES_MCP_SERVER_NAME}.env]`)
-  for (const [key, value] of Object.entries(server.env)) {
-    lines.push(`${key} = ${tomlString(value)}`)
-  }
+  lines.push(`env = ${tomlInlineStringTable(server.env)}`)
   lines.push('')
   return lines.join('\n')
 }
