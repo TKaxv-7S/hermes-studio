@@ -191,7 +191,7 @@ export async function refreshProviderModelCatalog(input: {
   const baseUrl = normalizeCatalogBaseUrl(input.base_url)
   if (!provider || !baseUrl) return null
 
-  const fetched = await fetchProviderModels(baseUrl, input.api_key || '', input.free_only === true)
+  const fetched = await fetchProviderModelsForCatalog(provider, baseUrl, input.api_key || '', input.free_only === true)
   if (fetched.length > 0) {
     return writeProviderModelCatalogEntry({
       provider,
@@ -266,6 +266,70 @@ function authAccessToken(value: any): string {
   return String(value?.tokens?.access_token || value?.access_token || '').trim()
 }
 
+async function fetchCodexOAuthModels(accessToken: string): Promise<string[]> {
+  if (!accessToken) return []
+  try {
+    const res = await fetch('https://chatgpt.com/backend-api/codex/models?client_version=1.0.0', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) {
+      logger.warn('[model-catalog-cache] Codex models returned %d', res.status)
+      return []
+    }
+    const body = await res.json() as { models?: Array<{ slug?: unknown; visibility?: unknown; priority?: unknown }> }
+    const sortable: Array<{ model: string; rank: number }> = []
+    for (const item of Array.isArray(body.models) ? body.models : []) {
+      const model = String(item.slug || '').trim()
+      if (!model) continue
+      const visibility = String(item.visibility || '').trim().toLowerCase()
+      if (visibility === 'hide' || visibility === 'hidden') continue
+      const priority = Number(item.priority)
+      sortable.push({ model, rank: Number.isFinite(priority) ? priority : 10000 })
+    }
+    sortable.sort((a, b) => a.rank - b.rank || a.model.localeCompare(b.model))
+    return uniqueModels(sortable.map(item => item.model))
+  } catch (err) {
+    logger.warn(err, '[model-catalog-cache] Codex models fetch failed')
+    return []
+  }
+}
+
+async function fetchGeminiOAuthModels(accessToken: string): Promise<string[]> {
+  if (!accessToken) return []
+  try {
+    const res = await fetch('https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'User-Agent': 'google-api-nodejs-client/9.15.1 (gzip)',
+        'X-Goog-Api-Client': 'gl-node/24.0.0',
+      },
+      body: '{}',
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) {
+      logger.warn('[model-catalog-cache] Gemini quota models returned %d', res.status)
+      return []
+    }
+    const body = await res.json() as { buckets?: Array<{ modelId?: unknown }> }
+    return uniqueModels((Array.isArray(body.buckets) ? body.buckets : [])
+      .map(bucket => String(bucket.modelId || '').trim())
+      .filter(Boolean))
+  } catch (err) {
+    logger.warn(err, '[model-catalog-cache] Gemini quota models fetch failed')
+    return []
+  }
+}
+
+async function fetchProviderModelsForCatalog(provider: string, baseUrl: string, apiKey: string, freeOnly: boolean): Promise<string[]> {
+  if (provider === 'openai-codex') return fetchCodexOAuthModels(apiKey)
+  if (provider === 'google-gemini-cli') return fetchGeminiOAuthModels(apiKey)
+  return fetchProviderModels(baseUrl, apiKey, freeOnly)
+}
+
 function hasOAuthCredential(value: any): boolean {
   return !!(
     value?.tokens?.access_token ||
@@ -288,7 +352,11 @@ async function profileStoredAuthCredential(profile: string, provider: string): P
       poolEntry
     )
     if (!hasAuth) return { hasAuth: false }
-    if (provider !== 'nous' && provider !== 'xai-oauth') return { hasAuth: true }
+    const providerSupportsLiveCatalog = provider === 'nous' ||
+      provider === 'xai-oauth' ||
+      provider === 'openai-codex' ||
+      provider === 'google-gemini-cli'
+    if (!providerSupportsLiveCatalog) return { hasAuth: true }
     const apiKey = provider === 'nous'
       ? authCredentialToken(providerEntry) || authCredentialToken(poolEntry)
       : authAccessToken(providerEntry) || authAccessToken(poolEntry)
