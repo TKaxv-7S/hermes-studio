@@ -1,6 +1,6 @@
 ---
 date: 2026-06-16
-commit: pending
+pr: 1599
 feature: Web slash command session titles
 impact: New Web UI slash-command sessions now use the command text for their initial title instead of the generic Bridge command title.
 ---
